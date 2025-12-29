@@ -20,7 +20,10 @@ fn main() {
                 args = Args::parse_from(&combined_args);
                 if let Some(target_path) = args.truncate_target_path {
                     if pack::truncate_to(&target_path) {
-                        println!("Successfully truncate self and save into {}.", target_path.display());
+                        println!(
+                            "Successfully truncate self and save into {}.",
+                            target_path.display()
+                        );
                     } else {
                         eprintln!("Failed to truncate self.");
                     }
@@ -36,13 +39,11 @@ fn main() {
         args = Args::parse();
         if args.pack_path.is_some() {
             let pack_path = args.pack_path.unwrap();
-            let full_args = vec![
-                "--url".to_string(),
-                args.url.to_string().clone(),
-                "--auth".to_string(),
-                args.auth.clone(),
-            ];
-
+            let mut full_args = vec!["--url".to_string(), args.url.to_string().clone()];
+            if let Some(auth_value) = args.auth {
+                full_args.push("--auth".to_string());
+                full_args.push(auth_value);
+            }
             if pack::save_to(&full_args, &pack_path) {
                 println!(
                     "Successfully packed sendmail data into {}.",
@@ -58,7 +59,7 @@ fn main() {
 
     let result = http::send_request(
         args.url.as_str(),
-        &args.auth,
+        args.auth.as_deref(),
         &sendmail_data.content,
         &sendmail_data.args,
     );

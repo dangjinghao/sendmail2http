@@ -24,7 +24,7 @@ pub struct Args {
     )]
     pub truncate_target_path: Option<PathBuf>,
     #[arg(long, help = "API authentication header value")]
-    pub auth: String,
+    pub auth: Option<String>,
     #[arg(long, help = "Target URL")]
     pub url: Url,
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]

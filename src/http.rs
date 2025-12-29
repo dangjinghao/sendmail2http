@@ -5,7 +5,7 @@ use reqwest::blocking::Client;
 /// request body: {"content": "<content>", "args": "<args>"}, json encoded.
 pub fn send_request(
     url: &str,
-    auth: &str,
+    auth: Option<&str>,
     content: &str,
     args: &str,
 ) -> Result<(), reqwest::Error> {
@@ -14,14 +14,11 @@ pub fn send_request(
         "content": content,
         "args": args,
     });
-
-    let response = client
-        .post(url)
-        .header("Authorization", auth)
-        .json(&body)
-        .send()?;
-
-    response.error_for_status()?;
+    let mut req_builder = client.post(url).json(&body);
+    if let Some(auth_value) = auth {
+        req_builder = req_builder.header("Authorization", auth_value);
+    }
+    req_builder.send()?.error_for_status()?;
 
     Ok(())
 }
