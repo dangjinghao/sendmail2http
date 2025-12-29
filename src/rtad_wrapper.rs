@@ -6,11 +6,11 @@ pub fn validate_self_header() -> bool {
     unsafe { rtad::rtad_validate_self_hdr() == 0 }
 }
 
-pub fn truncate_data(p: &PathBuf) -> bool {
-    let path_str = p.to_str().unwrap();
+pub fn truncate_self_data(new_path: &PathBuf) -> bool {
+    let path_str = new_path.to_str().unwrap();
     let c_char_ptr = std::ffi::CString::new(path_str).unwrap();
 
-    unsafe { rtad::rtad_truncate_data(c_char_ptr.as_ptr()) == 0 }
+    unsafe { rtad::rtad_truncate_self_data(c_char_ptr.as_ptr()) == 0 }
 }
 
 pub fn extract_self_data() -> Option<Vec<u8>> {

@@ -16,6 +16,13 @@ pub struct Args {
         help = "Packing current program and arguments into a new executable file"
     )]
     pub pack_path: Option<PathBuf>,
+    #[arg(
+        long,
+        long = "truncate",
+        value_name = "PATH",
+        help = "Truncate saved arguments and save the truncated executable file to PATH"
+    )]
+    pub truncate_target_path: Option<PathBuf>,
     #[arg(long, help = "API authentication header value")]
     pub auth: String,
     #[arg(long, help = "Target URL")]

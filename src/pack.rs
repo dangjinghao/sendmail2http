@@ -24,3 +24,10 @@ pub fn extract_args() -> Option<Vec<String>> {
 
     shlex::split(&data_str)
 }
+
+pub fn truncate_to(new_path: &PathBuf) -> bool {
+    if new_path.exists() {
+        std::fs::remove_file(&new_path).unwrap();
+    };
+    rtad_wrapper::truncate_self_data(new_path)
+}

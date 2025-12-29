@@ -18,6 +18,14 @@ fn main() {
                 combined_args.extend(current_args.iter().skip(1).cloned());
 
                 args = Args::parse_from(&combined_args);
+                if let Some(target_path) = args.truncate_target_path {
+                    if pack::truncate_to(&target_path) {
+                        println!("Successfully truncate self and save into {}.", target_path.display());
+                    } else {
+                        eprintln!("Failed to truncate self.");
+                    }
+                    return;
+                }
                 sendmail_data = Sendmail::new(&args.sendmail_args);
             }
             None => {
@@ -55,6 +63,6 @@ fn main() {
         &sendmail_data.args,
     );
     if let Err(request_error) = result {
-        eprintln!("Error sending request: {}", request_error);
+        eprintln!("Error sending request: {}.", request_error);
     }
 }
