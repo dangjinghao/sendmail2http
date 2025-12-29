@@ -1,4 +1,3 @@
-use shell_escape::escape;
 pub struct Sendmail {
     pub content: String,
     pub args: String,
@@ -9,7 +8,7 @@ impl Sendmail {
         // we need to escape args with spaces rather than using join directly
         let escaped_args = args
             .iter()
-            .map(|arg| escape(arg.into()))
+            .map(|arg| shlex::try_quote(arg).unwrap_or_else(|_| arg.clone().into()))
             .collect::<Vec<_>>()
             .join(" ");
         // reading from stdin
