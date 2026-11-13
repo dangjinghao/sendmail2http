@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::Parser;
 use reqwest::Url;
 #[derive(Parser, Debug, Clone)]
@@ -11,22 +9,14 @@ use reqwest::Url;
 )]
 pub struct Args {
     #[arg(
-        long = "pack",
-        value_name = "PATH",
-        help = "Packing current program and arguments into a new executable file"
-    )]
-    pub pack_path: Option<PathBuf>,
-    #[arg(
         long,
-        long = "truncate",
-        value_name = "PATH",
-        help = "Truncate saved arguments and save the truncated executable file to PATH"
+        help = "Replace this executable's embedded configuration and exit (Linux/macOS)"
     )]
-    pub truncate_target_path: Option<PathBuf>,
+    pub pack_self: bool,
     #[arg(long, help = "API authentication header value")]
     pub auth: Option<String>,
     #[arg(long, help = "Target URL")]
-    pub url: Url,
+    pub url: Option<Url>,
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub sendmail_args: Vec<String>,
 }

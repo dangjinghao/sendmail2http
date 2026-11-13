@@ -1,33 +1,27 @@
-use std::path::PathBuf;
+use std::io;
 
 use crate::rtad_wrapper;
 
-pub fn is_packed() -> bool {
+pub fn is_packed() -> io::Result<bool> {
     rtad_wrapper::validate_self_header()
 }
 
-pub fn save_to(args: &[String], dest: &PathBuf) -> bool {
-    if dest.exists() {
-        std::fs::remove_file(&dest).unwrap();
-    }
-    let escaped_args = args
-        .iter()
-        .map(|arg| shlex::try_quote(arg).unwrap_or_else(|_| arg.clone().into()))
-        .collect::<Vec<_>>()
-        .join(" ");
-    rtad_wrapper::copy_self_with_data(escaped_args.as_bytes(), dest)
+fn encode_args(args: &[String]) -> io::Result<String> {
+    shlex::try_join(args.iter().map(String::as_str))
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))
 }
 
-pub fn extract_args() -> Option<Vec<String>> {
-    let raw_data = rtad_wrapper::extract_self_data()?;
-    let data_str = String::from_utf8_lossy(&raw_data);
-
-    shlex::split(&data_str)
+pub fn save_self(args: &[String]) -> io::Result<()> {
+    rtad_wrapper::set_self_data(encode_args(args)?.as_bytes())
 }
 
-pub fn truncate_to(new_path: &PathBuf) -> bool {
-    if new_path.exists() {
-        std::fs::remove_file(&new_path).unwrap();
+pub fn extract_args() -> io::Result<Option<Vec<String>>> {
+    let Some(raw_data) = rtad_wrapper::extract_self_data()? else {
+        return Ok(None);
     };
-    rtad_wrapper::truncate_self_data(new_path)
+    let data_str = String::from_utf8(raw_data)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    let args = shlex::split(&data_str)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "Invalid embedded arguments"))?;
+    Ok(Some(args))
 }

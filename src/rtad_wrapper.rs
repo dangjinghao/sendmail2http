@@ -1,42 +1,45 @@
-use std::path::PathBuf;
+use std::ffi::{CStr, c_char};
+use std::io;
 
 use crate::rtad;
 
-pub fn validate_self_header() -> bool {
-    unsafe { rtad::rtad_validate_self_hdr() == 0 }
-}
-
-pub fn truncate_self_data(new_path: &PathBuf) -> bool {
-    let path_str = new_path.to_str().unwrap();
-    let c_char_ptr = std::ffi::CString::new(path_str).unwrap();
-
-    unsafe { rtad::rtad_truncate_self_data(c_char_ptr.as_ptr()) == 0 }
-}
-
-pub fn extract_self_data() -> Option<Vec<u8>> {
-    let mut size: usize = 0;
-    // create a c_charr buffer pointer
-    let mut data_ptr: *mut i8 = std::ptr::null_mut();
-    unsafe {
-        let res =
-            rtad::rtad_extract_self_data(&mut data_ptr as *mut *mut i8, &mut size as *mut usize);
-        if res != 0 {
-            return None;
-        } else {
-            let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
-            let bytes = slice.to_vec();
-            rtad::rtad_free_extracted_data(data_ptr);
-            Some(bytes)
-        }
+fn check_status(status: i32) -> io::Result<()> {
+    if status == rtad::rtad_error_RTAD_OK {
+        return Ok(());
     }
+    let message = unsafe { CStr::from_ptr(rtad::rtad_error_string(status)) };
+    let kind = if status == rtad::rtad_error_RTAD_ERR_NOT_SUPPORTED {
+        io::ErrorKind::Unsupported
+    } else {
+        io::ErrorKind::Other
+    };
+    Err(io::Error::new(kind, message.to_string_lossy().into_owned()))
 }
 
-pub fn copy_self_with_data(data: &[u8], dest: &PathBuf) -> bool {
-    let dest_str = dest.to_str().unwrap();
-    let c_char_ptr = std::ffi::CString::new(dest_str).unwrap();
-
-    unsafe {
-        rtad::rtad_copy_self_with_data(c_char_ptr.as_ptr(), data.as_ptr() as *const i8, data.len())
-            == 0
+pub fn validate_self_header() -> io::Result<bool> {
+    let status = unsafe { rtad::rtad_validate_self_hdr() };
+    if status == rtad::rtad_error_RTAD_ERR_NO_DATA {
+        return Ok(false);
     }
+    check_status(status)?;
+    Ok(true)
+}
+
+pub fn extract_self_data() -> io::Result<Option<Vec<u8>>> {
+    let mut size = 0;
+    let mut data_ptr: *mut c_char = std::ptr::null_mut();
+    let status = unsafe { rtad::rtad_extract_self_data(&mut data_ptr, &mut size) };
+    if status == rtad::rtad_error_RTAD_ERR_NO_DATA {
+        return Ok(None);
+    }
+    check_status(status)?;
+    // RTAD_OK guarantees a non-null allocation containing size bytes.
+    let bytes = unsafe { std::slice::from_raw_parts(data_ptr.cast::<u8>(), size) }.to_vec();
+    unsafe { rtad::rtad_free_extracted_data(data_ptr) };
+    Ok(Some(bytes))
+}
+
+/// After success, exit without calling any other RTAD self APIs.
+pub fn set_self_data(data: &[u8]) -> io::Result<()> {
+    check_status(unsafe { rtad::rtad_set_self_data(data.as_ptr().cast(), data.len()) })
 }

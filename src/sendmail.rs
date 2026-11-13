@@ -4,18 +4,13 @@ pub struct Sendmail {
 }
 
 impl Sendmail {
-    pub fn new(args: &Vec<String>) -> Self {
-        // we need to escape args with spaces rather than using join directly
-        let escaped_args = args
-            .iter()
-            .map(|arg| shlex::try_quote(arg).unwrap_or_else(|_| arg.clone().into()))
-            .collect::<Vec<_>>()
-            .join(" ");
-        // reading from stdin
-        let content = std::io::read_to_string(std::io::stdin()).expect("Failed to read stdin");
-        Self {
+    pub fn new(args: &[String]) -> std::io::Result<Self> {
+        let escaped_args = shlex::try_join(args.iter().map(String::as_str))
+            .map_err(|error| std::io::Error::new(std::io::ErrorKind::InvalidInput, error))?;
+        let content = std::io::read_to_string(std::io::stdin())?;
+        Ok(Self {
             content,
             args: escaped_args,
-        }
+        })
     }
 }

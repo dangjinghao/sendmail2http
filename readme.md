@@ -1,97 +1,32 @@
 # sendmail2http
 
-A utility that converts sendmail protocol to HTTP requests.
+A utility that sends stdin email content and sendmail arguments to an HTTP webhook.
 
-## Features
+## Usage
 
-- Protocol Conversion: Bridges sendmail interface to HTTP endpoints
-- Embedded Configuration: Supports embedding HTTP-related CLI arguments data into a new executable binary, allowing this new program to carry its own configuration data
-
-## Use Cases
-
-- Redirect email notifications to HTTP webhooks
-- Integrate legacy sendmail-based applications with modern HTTP APIs
-- Create self-contained executables with pre-configured HTTP endpoints
-
-## How It Works
-
-1. Accepts email data via stdin (standard sendmail interface)
-2. Converts the email data and CLI arguments into an HTTP request, and sends it to the specified HTTP endpoint
-3. Can generate a new executable with embedded HTTP-related configuration for deployment, simplifying distribution and execution, or to solve the specific problem of hard-coding sendmail configuration in environments where passing CLI arguments is not feasible
-
-
-## HTTP Request Content
-```json
-{
-    "content": "<content>",
-    "args": "<args>",
-}
-```
-
-## Embedding Configuration
-
-Execute this command:
+Send directly with an explicit URL:
 
 ```bash
-sendmail2http --pack sendmail --url http://example.com/webhook --auth "Basic xxx"
+printf 'Subject: test\n\nhello\n' | ./sendmail2http --url http://localhost:8080/webhook --auth "Basic xxx" -- -i a@example.com
 ```
 
-to create a new executable `sendmail` with embedded configuration. This new executable can be run with sendmail arguments, e.g. `sendmail -i a@a.com b@b.com`, and it will use the embedded HTTP configuration.
+The request is a JSON POST with `content` (stdin text) and `args` (shell-quoted sendmail arguments). Request, input and configuration errors return a nonzero exit status.
 
-Don't forget to set the appropriate permissions to make the new executable runnable:
+## Embedded configuration
+
+On Linux/macOS, embed configuration into the executable itself:
 
 ```bash
-chmod +x sendmail
+./sendmail2http --pack-self --url http://localhost:8080/webhook --auth "Basic xxx"
+printf 'hello\n' | ./sendmail2http -i a@example.com
 ```
 
-## Options
-```txt
-Usage: sendmail2http [OPTIONS] --url <URL> [SENDMAIL_ARGS]...
-
-Arguments:
-  [SENDMAIL_ARGS]...  
-
-Options:
-      --pack <PATH>      Packing current program and arguments into a new executable file
-      --truncate <PATH>  Truncate saved arguments and save the truncated executable file to PATH
-      --auth <AUTH>      API authentication header value
-      --url <URL>        Target URL
-  -h, --help             Print help (see more with '--help')
-  -V, --version          Print version
-```
-
-## Example
-
-I need to send email notifications to a webhook URL `http://localhost:8080/webhook` with authentication `Basic xxx`. I can create a new executable with embedded configuration:
+`--pack-self` calls `rtad_set_self_data` directly and exits after replacement. The next invocation uses the new configuration. Repeated updates replace the existing payload:
 
 ```bash
-./sendmail2http --pack sendmail --url http://localhost:8080/webhook --auth "Basic xxx"
+./sendmail2http --pack-self --url http://localhost:8080/new-webhook
 ```
 
-Set the executable permission:
+Explicit `--url` and `--auth` options override embedded values; omitted options retain their embedded values. A URL is required unless already embedded. **Put configuration options before sendmail arguments**, or use `--` to mark where sendmail arguments start.
 
-```bash
-chmod +x sendmail
-```
-
-Then I can use the `sendmail` executable as if it were a sendmail program:
-
-```bash
-echo yyy | ./sendmail -i a@a.com b@b.com
-```
-
-This will send the email data to the specified webhook URL, the server will receive an HTTP request as follows:
-
-```txt
-POST /webhook HTTP/1.1
-Host: localhost:8080
-Content-Type: application/json
-Authorization: Basic xxx
-Content-Length: 47
-Accept: */*
-X-Real-IP: [::1]
-
-{"args":"-i a@a.com b@b.com","content":"yyy\n"}
-```
-
-Now you can parse this webhook content in your HTTP service, and put the `sendmail` executable in any environment that requires sendmail functionality.
+Updates must run serially, with permission to replace the executable in its directory.

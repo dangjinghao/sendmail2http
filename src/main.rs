@@ -1,69 +1,68 @@
-use std::env;
+use std::error::Error;
+use std::io;
+use std::process::ExitCode;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use sendmail2http::args::Args;
 use sendmail2http::sendmail::Sendmail;
 use sendmail2http::{http, pack};
 
-fn main() {
-    let sendmail_data;
-    let args;
-    if pack::is_packed() {
-        match pack::extract_args() {
-            Some(extracted_args) => {
-                let current_args = env::args().collect::<Vec<String>>();
-                // insert extracted_args after the first argument (program name)
-                let mut combined_args = vec![current_args[0].clone()];
-                combined_args.extend(extracted_args.iter().cloned());
-                combined_args.extend(current_args.iter().skip(1).cloned());
-
-                args = Args::parse_from(&combined_args);
-                if let Some(target_path) = args.truncate_target_path {
-                    if pack::truncate_to(&target_path) {
-                        println!(
-                            "Successfully truncate self and save into {}.",
-                            target_path.display()
-                        );
-                    } else {
-                        eprintln!("Failed to truncate self.");
-                    }
-                    return;
-                }
-                sendmail_data = Sendmail::new(&args.sendmail_args);
-            }
-            None => {
-                panic!("Failed to extract sendmail arguments.");
-            }
+fn run() -> Result<(), Box<dyn Error>> {
+    let mut args = Args::parse();
+    if let Some(extracted_args) = pack::extract_args()? {
+        let saved =
+            Args::try_parse_from(std::iter::once("sendmail2http".to_owned()).chain(extracted_args))
+                .map_err(|_| {
+                    io::Error::new(io::ErrorKind::InvalidData, "Invalid embedded configuration")
+                })?;
+        if saved.url.is_none() || saved.pack_self || !saved.sendmail_args.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Invalid embedded configuration",
+            )
+            .into());
         }
-    } else {
-        args = Args::parse();
-        if args.pack_path.is_some() {
-            let pack_path = args.pack_path.unwrap();
-            let mut full_args = vec!["--url".to_string(), args.url.to_string().clone()];
-            if let Some(auth_value) = args.auth {
-                full_args.push("--auth".to_string());
-                full_args.push(auth_value);
-            }
-            if pack::save_to(&full_args, &pack_path) {
-                println!(
-                    "Successfully packed sendmail data into {}.",
-                    &pack_path.display()
-                );
-            } else {
-                panic!("Failed to pack sendmail data.");
-            }
-            return;
-        }
-        sendmail_data = Sendmail::new(&args.sendmail_args);
+        // Explicit options override embedded defaults without duplicate clap arguments.
+        args.url = args.url.or(saved.url);
+        args.auth = args.auth.or(saved.auth);
     }
 
-    let result = http::send_request(
-        args.url.as_str(),
+    let Some(url) = args.url else {
+        Args::command()
+            .error(
+                clap::error::ErrorKind::MissingRequiredArgument,
+                "--url <URL> is required unless configuration is embedded",
+            )
+            .exit();
+    };
+    if args.pack_self {
+        let mut full_args = vec!["--url".to_owned(), url.to_string()];
+        if let Some(auth_value) = args.auth {
+            full_args.push("--auth".to_owned());
+            full_args.push(auth_value);
+        }
+        pack::save_self(&full_args)?;
+        println!("Updated this executable's embedded configuration.");
+        // rtad_set_self_data replaces the file; the old process must now exit.
+        return Ok(());
+    }
+
+    let sendmail_data = Sendmail::new(&args.sendmail_args)?;
+    http::send_request(
+        url.as_str(),
         args.auth.as_deref(),
         &sendmail_data.content,
         &sendmail_data.args,
-    );
-    if let Err(request_error) = result {
-        eprintln!("Error sending request: {}.", request_error);
+    )?;
+    Ok(())
+}
+
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("Error: {error}");
+            ExitCode::FAILURE
+        }
     }
 }
