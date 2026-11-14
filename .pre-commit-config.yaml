@@ -1,0 +1,26 @@
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo fmt --all --check
+        language: system
+        pass_filenames: false
+        files: '(^|/)(Cargo\.(toml|lock)|rust-toolchain(\.toml)?|\.?rustfmt\.toml)$|\.rs$'
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --locked --all-targets -- -D warnings
+        language: system
+        pass_filenames: false
+        files: '(^|/)(Cargo\.(toml|lock)|rust-toolchain(\.toml)?|\.?clippy\.toml|config(\.toml)?)$|\.rs$|^\.pre-commit-config\.yaml$'
