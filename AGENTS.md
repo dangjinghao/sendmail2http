@@ -46,6 +46,8 @@ Unit tests live beside argument parsing and configuration encoding; `tests/cli.r
 
 `.github/workflows/ci.yml` runs on every push and pull request, plus manual dispatch. It uses Rust 1.100.0, checks formatting and Clippy, builds and tests optimized `x86_64-unknown-linux-musl` binaries, and verifies static linking. Reproduce with `CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc cargo test --locked --release --target x86_64-unknown-linux-musl` after installing `musl-tools` and the target standard library. CI artifacts are verification builds, not published releases; UPX packaging is not configured yet.
 
+CI uses `Swatinem/rust-cache@v2` after selecting the toolchain to cache Cargo downloads and compiled dependencies. Keep `shared-key: x86_64-unknown-linux-musl` for compatible future release jobs. Let the action include toolchain, lockfile and compiler environment in its cache keys; do not key by commit SHA or skip validation on a cache hit. These caches are separate from local development-container volumes.
+
 ## Commit & Pull Request Guidelines
 
 Recent commits use `feat:`, `refactor!:`, and descriptive imperative subjects; prefer that style and mark breaking CLI changes explicitly. Keep commits focused. PR descriptions should explain behavior changes, reference relevant issues, list validation performed, and document platform limitations. Update `readme.md` when CLI behavior changes. Never commit real webhook credentials or configured executable binaries.
