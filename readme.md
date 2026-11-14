@@ -30,3 +30,14 @@ printf 'hello\n' | ./sendmail2http -i a@example.com
 Explicit `--url` and `--auth` options override embedded values; omitted options retain their embedded values. A URL is required unless already embedded. **Put configuration options before sendmail arguments**, or use `--` to mark where sendmail arguments start.
 
 Updates must run serially, with permission to replace the executable in its directory.
+
+Clear the executable's embedded configuration without a URL or destination path:
+
+```bash
+./sendmail2http --truncate
+```
+
+`--truncate` calls `rtad_truncate_self_data(NULL)` and exits after replacement.
+It is mutually exclusive with `--pack-self`. Clearing an executable without
+embedded data also succeeds. Self replacement is supported on Linux/macOS;
+Windows reports an unsupported operation.

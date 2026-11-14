@@ -13,6 +13,12 @@ pub struct Args {
         help = "Replace this executable's embedded configuration and exit (Linux/macOS)"
     )]
     pub pack_self: bool,
+    #[arg(
+        long,
+        conflicts_with = "pack_self",
+        help = "Clear this executable's embedded configuration and exit (Linux/macOS)"
+    )]
+    pub truncate: bool,
     #[arg(long, help = "API authentication header value")]
     pub auth: Option<String>,
     #[arg(long, help = "Target URL")]

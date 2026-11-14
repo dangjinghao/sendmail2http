@@ -1,7 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
-const RTAD_REV: &str = "6e1939a8f085d79c2f13188bd63686a232db2f29";
+const RTAD_REV: &str = "d2b734b05b18b0c2c3c10ecfbad95dec5c7ff539";
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());

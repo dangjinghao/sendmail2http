@@ -43,3 +43,8 @@ pub fn extract_self_data() -> io::Result<Option<Vec<u8>>> {
 pub fn set_self_data(data: &[u8]) -> io::Result<()> {
     check_status(unsafe { rtad::rtad_set_self_data(data.as_ptr().cast(), data.len()) })
 }
+
+/// After success, exit without calling any other RTAD self APIs.
+pub fn truncate_self_data() -> io::Result<()> {
+    check_status(unsafe { rtad::rtad_truncate_self_data(std::ptr::null()) })
+}

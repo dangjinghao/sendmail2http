@@ -9,13 +9,22 @@ use sendmail2http::{http, pack};
 
 fn run() -> Result<(), Box<dyn Error>> {
     let mut args = Args::parse();
+    if args.truncate {
+        sendmail2http::rtad_wrapper::truncate_self_data()?;
+        println!("Cleared this executable's embedded configuration.");
+        return Ok(());
+    }
     if let Some(extracted_args) = pack::extract_args()? {
         let saved =
             Args::try_parse_from(std::iter::once("sendmail2http".to_owned()).chain(extracted_args))
                 .map_err(|_| {
                     io::Error::new(io::ErrorKind::InvalidData, "Invalid embedded configuration")
                 })?;
-        if saved.url.is_none() || saved.pack_self || !saved.sendmail_args.is_empty() {
+        if saved.url.is_none()
+            || saved.pack_self
+            || saved.truncate
+            || !saved.sendmail_args.is_empty()
+        {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 "Invalid embedded configuration",
