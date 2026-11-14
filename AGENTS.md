@@ -40,7 +40,7 @@ Truncation requires neither a URL nor valid embedded CLI configuration; clearing
 
 ## Testing Guidelines
 
-There is currently no dedicated test suite or numeric coverage requirement. Add meaningful Rust unit tests beside modules or integration tests under `tests/` when changing behavior; use descriptive `snake_case` names. Test executable mutation only on disposable copies. Verify configuration persistence, repeated updates, `--truncate`, and HTTP failure exit codes. After successful self replacement, exit before calling another self-reading API.
+Unit tests live beside argument parsing and configuration encoding; `tests/cli.rs` exercises the real executable with disposable copies and local HTTP servers. Run `cargo test --locked`. There is no numeric coverage requirement. Cover configuration persistence, repeated updates, `--truncate`, corrupt payloads, HTTP requests and failure exit codes. After successful self replacement, exit before calling another self-reading API. Tests must bound subprocess and socket waits, bypass proxies for loopback requests, and never contact external webhooks.
 
 ## Commit & Pull Request Guidelines
 
