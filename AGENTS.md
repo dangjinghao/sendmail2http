@@ -18,6 +18,8 @@ Use the development container, which supplies Rust and installs `pre-commit`, fo
 
 The container uses `ghcr.io/devcontainers-extra/features/pre-commit:2`; its `postCreateCommand` installs `rustfmt`, `clippy`, and the commit hook. Rebuild the container after changing its configuration. Outside the container, install the tools and run `pre-commit install` once per clone.
 
+Named Docker volumes preserve `/usr/local/cargo` downloads and workspace `target/` build artifacts across container rebuilds. The creation command installs `clang`/`libclang-dev` and makes the target volume writable by `vscode`. Existing host build files are hidden while the target volume is mounted; deleting these volumes discards their caches.
+
 - `cargo build --locked`: compile the development binary.
 - `cargo build --release --locked`: produce the optimized executable in `target/release/`.
 - `cargo test --locked`: run Rust tests and documentation tests.

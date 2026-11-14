@@ -7,16 +7,12 @@
 	"features": {
 		"ghcr.io/devcontainers-extra/features/pre-commit:2": {}
 	},
-	"postCreateCommand": "rustup component add rustfmt clippy && pre-commit install"
-
-	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
-	// "mounts": [
-	// 	{
-	// 		"source": "devcontainer-cargo-cache-${devcontainerId}",
-	// 		"target": "/usr/local/cargo",
-	// 		"type": "volume"
-	// 	}
-	// ]
+	"mounts": [
+		"source=sendmail2http-cargo-${devcontainerId},target=/usr/local/cargo,type=volume",
+		"source=sendmail2http-target-${devcontainerId},target=${containerWorkspaceFolder}/target,type=volume"
+	],
+	// bindgen needs libclang; a new target volume needs writable ownership.
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y clang libclang-dev && sudo chown vscode:vscode target && rustup component add rustfmt clippy && pre-commit install"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
