@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  musl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy --target x86_64-unknown-linux-musl
+          rustup default 1.100.0
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --locked --all-targets --target x86_64-unknown-linux-musl -- -D warnings
+      - name: Build release
+        run: cargo build --locked --release --target x86_64-unknown-linux-musl
+      - name: Test release
+        run: cargo test --locked --release --target x86_64-unknown-linux-musl
+      - name: Check static executable
+        run: |
+          file target/x86_64-unknown-linux-musl/release/sendmail2http
+          file target/x86_64-unknown-linux-musl/release/sendmail2http | grep -E 'statically linked|static-pie linked'
+          target/x86_64-unknown-linux-musl/release/sendmail2http --version
+      - name: Package executable
+        run: tar -C target/x86_64-unknown-linux-musl/release -czf sendmail2http-x86_64-linux-musl.tar.gz sendmail2http
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sendmail2http-x86_64-linux-musl
+          path: sendmail2http-x86_64-linux-musl.tar.gz
+          if-no-files-found: error
