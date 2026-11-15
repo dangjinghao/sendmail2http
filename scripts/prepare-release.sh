@@ -6,10 +6,10 @@ tag=${1:?Usage: bash scripts/prepare-release.sh vVERSION}
 target=x86_64-unknown-linux-musl
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=${CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER:-musl-gcc}
 
-# Verify metadata before starting the expensive build.
-version=$(python3 -c 'import tomllib; print(tomllib.load(open("Cargo.toml", "rb"))["package"]["version"])')
-[[ "$tag" == "v$version" ]] || { echo "Tag must match Cargo.toml: v$version" >&2; exit 1; }
+# Release tags are authoritative; use a disposable checkout for this script.
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse --verify "refs/tags/$tag^{commit}")" ]] || { echo "Check out the release tag first" >&2; exit 1; }
+python3 scripts/set-release-version.py "$tag"
+cargo update --workspace
 cargo build --locked --release --target "$target"
 cargo test --locked --release --target "$target"
 file "target/$target/release/sendmail2http" | grep -E 'statically linked|static-pie linked'
