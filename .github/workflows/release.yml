@@ -19,7 +19,7 @@ jobs:
       TAG: ${{ github.ref_name }}
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install native dependencies
