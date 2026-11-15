@@ -8,7 +8,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-const BIN: &str = env!("CARGO_BIN_EXE_sendmail2http");
+fn binary() -> PathBuf {
+    std::env::var_os("SENDMAIL2HTTP_TEST_BINARY")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_BIN_EXE_sendmail2http")))
+}
 
 struct Fixture(PathBuf);
 impl Fixture {
@@ -24,7 +28,7 @@ impl Fixture {
     }
     fn binary(&self) -> PathBuf {
         let path = self.0.join("sendmail");
-        fs::copy(BIN, &path).unwrap();
+        fs::copy(binary(), &path).unwrap();
         path
     }
 }
@@ -91,10 +95,10 @@ fn cli_validation_and_help() {
         vec!["--pack-self", "--truncate"],
         vec!["--url", "not-a-url"],
     ] {
-        assert_eq!(run(Path::new(BIN), &args, b"").status.code(), Some(2));
+        assert_eq!(run(&binary(), &args, b"").status.code(), Some(2));
     }
     for flag in ["--help", "--version"] {
-        ok(run(Path::new(BIN), &[flag], b""));
+        ok(run(&binary(), &[flag], b""));
     }
 }
 
@@ -128,9 +132,9 @@ fn self_configuration_round_trip_and_repeated_updates() {
         0o751
     );
     ok(run(&path, &["--truncate"], b""));
-    assert_eq!(fs::read(&path).unwrap(), fs::read(BIN).unwrap());
+    assert_eq!(fs::read(&path).unwrap(), fs::read(binary()).unwrap());
     ok(run(&path, &["--truncate"], b""));
-    assert_eq!(fs::read(&path).unwrap(), fs::read(BIN).unwrap());
+    assert_eq!(fs::read(&path).unwrap(), fs::read(binary()).unwrap());
     assert_eq!(run(&path, &[], b"").status.code(), Some(2));
     ok(run(&path, &["--version"], b""));
 }
@@ -152,7 +156,7 @@ fn invalid_embedded_configuration_is_rejected_and_can_be_cleared() {
         append_payload(&path, payload);
         assert_eq!(run(&path, &[], b"").status.code(), Some(1), "{payload:?}");
         ok(run(&path, &["--truncate"], b""));
-        assert_eq!(fs::read(&path).unwrap(), fs::read(BIN).unwrap());
+        assert_eq!(fs::read(&path).unwrap(), fs::read(binary()).unwrap());
     }
 }
 
@@ -246,7 +250,7 @@ fn http_request_preserves_content_arguments_and_optional_auth() {
             "",
         ]);
         ok(run(
-            Path::new(BIN),
+            &binary(),
             &args,
             "Subject: 测试\r\n\r\nhello\n".as_bytes(),
         ));
@@ -343,9 +347,7 @@ fn input_header_http_and_transport_errors_fail() {
     for status in [400, 401, 500] {
         let (url, handle) = server(status);
         assert_eq!(
-            run(Path::new(BIN), &["--url", &url], b"message")
-                .status
-                .code(),
+            run(&binary(), &["--url", &url], b"message").status.code(),
             Some(1)
         );
         handle.join().unwrap();
@@ -366,7 +368,7 @@ fn input_header_http_and_transport_errors_fail() {
         ),
         (vec!["--url", url.as_str()], &b"\xff"[..], "UTF-8"),
     ] {
-        let output = run(Path::new(BIN), &args, input);
+        let output = run(&binary(), &args, input);
         assert_eq!(output.status.code(), Some(1));
         assert!(
             String::from_utf8_lossy(&output.stderr).contains(error),

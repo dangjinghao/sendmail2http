@@ -1,0 +1,44 @@
+name: Release draft
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ github.ref_name }}
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl
+      - name: Install Rust toolchain
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --target x86_64-unknown-linux-musl
+          rustup default 1.100.0
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: x86_64-unknown-linux-musl
+      - name: Build, test and package both files
+        run: bash scripts/prepare-release.sh "$TAG"
+      - name: Create draft for manual review
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$TAG"
+          "dist/sendmail2http-${TAG}-x86_64-linux-musl.tar.gz"
+          "dist/sendmail2http-${TAG}-x86_64-linux-musl-upx.tar.gz"
+          dist/SHA256SUMS --verify-tag --draft --title "$TAG" --notes-file release-notes.md

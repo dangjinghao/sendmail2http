@@ -44,9 +44,17 @@ Truncation requires neither a URL nor valid embedded CLI configuration; clearing
 
 Unit tests live beside argument parsing and configuration encoding; `tests/cli.rs` exercises the real executable with disposable copies and local HTTP servers. Run `cargo test --locked`. There is no numeric coverage requirement. Cover configuration persistence, repeated updates, `--truncate`, corrupt payloads, HTTP requests and failure exit codes. After successful self replacement, exit before calling another self-reading API. Tests must bound subprocess and socket waits, bypass proxies for loopback requests, and never contact external webhooks.
 
-`.github/workflows/ci.yml` runs on every push and pull request, plus manual dispatch. It uses Rust 1.100.0, checks formatting and Clippy, builds and tests optimized `x86_64-unknown-linux-musl` binaries, and verifies static linking. Reproduce with `CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc cargo test --locked --release --target x86_64-unknown-linux-musl` after installing `musl-tools` and the target standard library. CI artifacts are verification builds, not published releases; UPX packaging is not configured yet.
+`.github/workflows/ci.yml` runs on branch pushes and pull requests, plus manual dispatch. It uses Rust 1.100.0, checks formatting and Clippy, builds and tests optimized `x86_64-unknown-linux-musl` binaries, and verifies static linking. Reproduce with `CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc cargo test --locked --release --target x86_64-unknown-linux-musl` after installing `musl-tools` and the target standard library. CI artifacts are verification builds, not published releases.
 
 CI uses `Swatinem/rust-cache@v2` after selecting the toolchain to cache Cargo downloads and compiled dependencies. Keep `shared-key: x86_64-unknown-linux-musl` for compatible future release jobs. Let the action include toolchain, lockfile and compiler environment in its cache keys; do not key by commit SHA or skip validation on a cache hit. These caches are separate from local development-container volumes.
+
+## Release Drafts
+
+`.github/workflows/release.yml` handles pushed `v*` tags. Match the tag to `v` plus the package version in `Cargo.toml`. It builds musl once, preserves the original, and compresses a copy using checksum-pinned UPX 5.3.0. Both exact files run all CLI integration tests through the runtime `SENDMAIL2HTTP_TEST_BINARY` override; without it, tests use Cargo's executable. Mutation tests still use disposable copies.
+
+Keep workflows focused on setup, caching, orchestration and uploading. Use one script, `bash scripts/prepare-release.sh vVERSION`, to validate the checked-out tag, build, test, package and generate a plain commit list with `git log`. It does not require GitHub environment variables. `UPX_BINARY` may point to an already installed binary for local runs. Outputs `dist/` and `release-notes.md` are ignored. Keep implementation details here, not in the README.
+
+Only after both files pass, the workflow packages two executable-preserving tarballs, adds `SHA256SUMS`, and creates a draft with commit subjects and short hashes since the previous reachable version tag (all history for the first release). Review notes and files and publish manually. An existing release for the tag makes creation fail rather than overwriting reviewed or published content; inspect any partial draft before retrying. Never automatically publish drafts.
 
 ## Commit & Pull Request Guidelines
 
