@@ -13,17 +13,18 @@ concurrency:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       TAG: ${{ github.ref_name }}
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+      CFLAGS_x86_64_unknown_linux_musl: -march=x86-64 -mtune=generic
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install native dependencies
-        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl qemu-user
       - name: Install Rust toolchain
         run: |
           rustup toolchain install 1.100.0 --profile minimal --target x86_64-unknown-linux-musl
@@ -41,4 +42,4 @@ jobs:
           gh release create "$TAG"
           "dist/sendmail2http-${TAG}-x86_64-linux-musl.tar.gz"
           "dist/sendmail2http-${TAG}-x86_64-linux-musl-upx.tar.gz"
-          dist/SHA256SUMS --verify-tag --draft --title "$TAG" --notes-file release-notes.md
+          --verify-tag --draft --title "$TAG" --notes-file release-notes.md

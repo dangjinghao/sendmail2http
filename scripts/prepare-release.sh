@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 tag=${1:?Usage: bash scripts/prepare-release.sh vVERSION}
 target=x86_64-unknown-linux-musl
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=${CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER:-musl-gcc}
+export CFLAGS_x86_64_unknown_linux_musl=${CFLAGS_x86_64_unknown_linux_musl:--march=x86-64 -mtune=generic}
 
 # Release tags are authoritative; use a disposable checkout for this script.
 [[ "$(git rev-parse HEAD)" == "$(git rev-parse --verify "refs/tags/$tag^{commit}")" ]] || { echo "Check out the release tag first" >&2; exit 1; }
@@ -29,6 +30,7 @@ cp "$work_dir/plain/sendmail2http" "$work_dir/upx/sendmail2http"
 "$upx" --best "$work_dir/upx/sendmail2http"
 "$upx" --test "$work_dir/upx/sendmail2http"
 for variant in plain upx; do
+    bash scripts/test-cpu-compatibility.sh "$work_dir/$variant/sendmail2http"
     SENDMAIL2HTTP_TEST_BINARY="$work_dir/$variant/sendmail2http" \
         cargo test --locked --release --target "$target" --test cli
 done
@@ -39,7 +41,6 @@ plain="sendmail2http-${tag}-x86_64-linux-musl.tar.gz"
 compressed="sendmail2http-${tag}-x86_64-linux-musl-upx.tar.gz"
 tar -C "$work_dir/plain" -czf "dist/$plain" sendmail2http
 tar -C "$work_dir/upx" -czf "dist/$compressed" sendmail2http
-(cd dist && sha256sum "$plain" "$compressed" > SHA256SUMS)
 
 # First release includes all history; subsequent releases start at the nearest ancestor tag.
 previous=$(git describe --tags --match 'v*' --abbrev=0 "$tag^" 2>/dev/null || true)

@@ -15,14 +15,15 @@ concurrency:
 
 jobs:
   musl:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+      CFLAGS_x86_64_unknown_linux_musl: -march=x86-64 -mtune=generic
     steps:
       - uses: actions/checkout@v7
       - name: Install native dependencies
-        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools libclang-dev libssl-dev pkg-config perl qemu-user
       - name: Install Rust toolchain
         run: |
           rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy --target x86_64-unknown-linux-musl
@@ -39,6 +40,8 @@ jobs:
         run: cargo build --locked --release --target x86_64-unknown-linux-musl
       - name: Test release
         run: cargo test --locked --release --target x86_64-unknown-linux-musl
+      - name: Check baseline CPU compatibility
+        run: bash scripts/test-cpu-compatibility.sh target/x86_64-unknown-linux-musl/release/sendmail2http
       - name: Check static executable
         run: |
           file target/x86_64-unknown-linux-musl/release/sendmail2http
