@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 tag=${1:?Usage: bash scripts/prepare-release.sh vVERSION}
 target=x86_64-unknown-linux-musl
+upx=${UPX_BINARY:-upx}
+"$upx" --version
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=${CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER:-musl-gcc}
 export CFLAGS_x86_64_unknown_linux_musl=${CFLAGS_x86_64_unknown_linux_musl:--march=x86-64 -mtune=generic}
 
@@ -17,13 +19,6 @@ file "target/$target/release/sendmail2http" | grep -E 'statically linked|static-
 
 work_dir=$(mktemp -d)
 trap 'rm -rf "$work_dir"' EXIT
-upx=${UPX_BINARY:-}
-if [[ -z "$upx" ]]; then
-    curl --fail --location --retry 3 https://github.com/upx/upx/releases/download/v5.3.0/upx-5.3.0-amd64_linux.tar.xz -o "$work_dir/upx.tar.xz"
-    echo '79cea8a50b6fa102d10c7b79a419cd77dead3cc2d78661de2dc5e5815dc505c1  '"$work_dir/upx.tar.xz" | sha256sum --check
-    tar -xJf "$work_dir/upx.tar.xz" -C "$work_dir"
-    upx="$work_dir/upx-5.3.0-amd64_linux/upx"
-fi
 mkdir -p "$work_dir/plain" "$work_dir/upx"
 cp "target/$target/release/sendmail2http" "$work_dir/plain/sendmail2http"
 cp "$work_dir/plain/sendmail2http" "$work_dir/upx/sendmail2http"
