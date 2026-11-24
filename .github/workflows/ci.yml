@@ -41,7 +41,7 @@ jobs:
       - name: Test release
         run: cargo test --locked --release --target x86_64-unknown-linux-musl
       - name: Check baseline CPU compatibility
-        run: bash scripts/test-cpu-compatibility.sh target/x86_64-unknown-linux-musl/release/sendmail2http
+        run: python3 scripts/test-cpu-compatibility.py target/x86_64-unknown-linux-musl/release/sendmail2http
       - name: Check static executable
         run: |
           file target/x86_64-unknown-linux-musl/release/sendmail2http

@@ -25,7 +25,7 @@ cp "$work_dir/plain/sendmail2http" "$work_dir/upx/sendmail2http"
 "$upx" --best "$work_dir/upx/sendmail2http"
 "$upx" --test "$work_dir/upx/sendmail2http"
 for variant in plain upx; do
-    bash scripts/test-cpu-compatibility.sh "$work_dir/$variant/sendmail2http"
+    python3 scripts/test-cpu-compatibility.py "$work_dir/$variant/sendmail2http"
     SENDMAIL2HTTP_TEST_BINARY="$work_dir/$variant/sendmail2http" \
         cargo test --locked --release --target "$target" --test cli
 done
